@@ -61,7 +61,10 @@ void dump_symbol(bool);
 void set_err_msg(bool, bool, char*);
 void erase_table_scope(int);
 int find_highest_reg(int);
-int find_var_reg(char*, int);
+
+// Returns data about a variable in the symbol table.
+// 3rd parameter is requested data - 1: reg 2: type
+int find_var_data(char*, int, int);
 int find_var(char*, int, int*, int*, char*);
 %}
 
@@ -150,18 +153,30 @@ return_expression
 
 declaration
     : type id_expression ASGN expression SEMICOLON { 
+        // printf("\nexpression: %s\n", $4);
+        // Check if we need to cast assigned value (right side) to type of left side or vise versa
+        int right_side_type = find_var_data($4, curr_scope, 2);
+        int left_reg = find_var_data($2, curr_scope, 1);
+        int right_reg = find_var_data($4, curr_scope, 1);
+        // generate_cast_code(type, right_type)
+
         insert_symbol($1, $2, "variable", curr_scope);
         int reg = 0;
         if(curr_scope != 0) {
-            reg =  find_var_reg($2, curr_scope);
+            reg =  find_var_data($2, curr_scope, 1);
         }
-        process_variable($2, $4, $1, curr_scope, reg);
+
+        // process_variable($2, $4, $1, curr_scope, reg);
+        if(last_expr_type == NULL) {
+            process_variable($2, $4, $1, curr_scope, reg);
+            // process_var_assgn_single($4, $1, right_side_type, "none", right_reg, left_reg);
+        }
     }
     | type id_expression SEMICOLON { 
         insert_symbol($1, $2, "variable", curr_scope); 
         int reg = 0;
         if(curr_scope != 0) {
-            reg =  find_var_reg($2, curr_scope);
+            reg =  find_var_data($2, curr_scope, 1);
         }
         process_variable($2, NULL, $1, curr_scope, reg);
     }
@@ -220,9 +235,11 @@ print_func
 ;
 
 primary_expression
-	: ID { strcpy($$, yytext); lookup_symbol(yytext, curr_scope); strcat(error_msg, error_cause_name); }
+	: ID { printf("\nin primary expression ID!! %s\n", yytext); strcpy($$, yytext); lookup_symbol(yytext, curr_scope); strcat(error_msg, error_cause_name); }
 	| constant {
+        printf("\nin primary expression constant!!\n");
         strcpy($$, $1);
+        // Make instructions for single constant
     }
 	| LB expression RB {
         strcpy($$, $2);
@@ -273,7 +290,45 @@ expression
 
 assignment_expression
 	: unary_expression assignment_operator logical_expression {
+        // int left_type = find_var_data($1, curr_scope, 2);
+        // int left_reg = find_var_data($1, curr_scope, 1);
+        // int right_type = find_var_data($3, curr_scope, 2);
+        // int right_reg = find_var_data($3, curr_scope, 1);
+        int left_scope, right_scope;
+        int left_reg, right_reg;
+        char left_type[32] = {0};
+        char right_type[32] = {0};
 
+        int left_arg_type = find_var($1, curr_scope, &left_reg, &left_scope, left_type);
+        int right_arg_type = find_var($3, curr_scope, &right_reg, &right_scope, right_type);
+
+        printf("ASSIGNMENT EXPRESSION OPERANDS:\n%s----:\ntype: %s\nreg: %d\narg_type: %d\n%s----:\ntype: %s\nreg: %d\narg_type: %d\n", $1, left_type, left_reg, left_arg_type, $3, right_type, right_reg, right_arg_type);
+
+        char output_buf[32] = {0};
+
+        if(last_expr_type == NULL) {
+            // Single symbol on right side
+            char right_arg_type[16] = {0};
+            strcpy(right_arg_type, "const");
+
+            if(lookup_symbol($3, curr_scope)) {
+                strcpy(right_arg_type, "variable");
+            }
+            process_var_assgn_single($3, left_type, right_type, right_arg_type, left_reg, right_reg);
+        }
+
+        printf("ASSIGNMENT OF %s\n", $1);
+        // if(left_type == 1) {
+        //     // Integer
+        //     printf("%s IS AN INTEGER\n", $1);
+        //     sprintf(output_buf, "\tistore %d\n", left_reg);
+        // }
+        // else if(left_type == 2) {
+        //     // Float
+        //     printf("%s IS A FLOAT\n", $1);
+        //     sprintf(output_buf, "\tfstore %d\n", left_reg);
+        // }
+        // write_to_file(output_buf);
     }
     | logical_expression {
         strcpy($$, $1);
@@ -636,10 +691,25 @@ int find_highest_reg(int scope) {
     return curr_highest;
 }
 
-int find_var_reg(char* name, int scope) {
+int find_var_data(char* name, int scope, int data) {
+    // data:
+    // 1: reg
+    // 2: type (int/float)
     TRAVERSE_SCOPE_AFTER_HEAD(scope) {
         if(strcmp(name, it->name) == 0) {
-            return it->reg_id;
+            if(data == 1) {
+                return it->reg_id;
+            }
+            else if(data == 2) {
+                if(strcmp(it->data_type, "int") == 0) {
+                    // Int
+                    return 1;
+                }
+                else {
+                    // Float
+                    return 2;
+                }
+            }
         }
     }
     return -1;

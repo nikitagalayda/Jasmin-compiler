@@ -61,6 +61,60 @@ void process_variable(char* name, char* value, char* type, int scope, int reg) {
     write_to_file(var_buf);
 }
 
+void process_var_assgn_single(char* right_val, char* left_type, char* right_type, char* right_arg_type, int left_reg, int right_reg) {
+    char output_buf[256] = {0};
+    char right_type_str[8] = {0};
+    char left_type_str[8] = {0};
+
+    // if(right_type == 1) {
+    //     strcpy(right_type_str, "int");
+    // }
+    // else {
+    //     strcpy(right_type_str, "float");
+    // }
+
+    // if(left_type == 1) {
+    //     strcpy(left_type_str, "int");
+    // }
+    // else {
+    //     strcpy(left_type_str, "float");
+    // }
+
+
+    if(right_reg < 0) {
+        // Right side is a constant.
+        sprintf(output_buf, "\tldc %s\n", right_val);
+    }
+    else {
+        if(strcmp(right_type, "float") == 0) {
+            sprintf(output_buf, "\tfload %d\n", right_reg);
+        }
+        else {
+            sprintf(output_buf, "\tiload %d\n", right_reg);
+        }
+        // Right side is a constant.
+    }
+    // Write the correct load.
+    write_to_file(output_buf);
+
+    printf("----%s\n", right_type);
+    printf("----%s\n", left_type);
+
+    generate_cast_code(left_type, right_type);
+
+    if(strcmp(left_type, "int") == 0) {
+            // Integer
+            sprintf(output_buf, "\tistore %d\n", left_reg);
+        }
+    else if(strcmp(left_type, "float") == 0) {
+        // Float
+        sprintf(output_buf, "\tfstore %d\n", left_reg);
+    }
+    // strcat(output_buf, store_buf);
+    // Write the correct store.
+    write_to_file(output_buf);
+}
+
 void type_map(char* type, char* dest) {
     if(strcmp(type, "int") == 0) {
         strcat(dest, "I");
@@ -85,10 +139,10 @@ void type_map(char* type, char* dest) {
 void process_arithmetic(char* operation, char* left_op, int left_reg, int left_scope, char* left_type, int left_arg_type, char* right_op, int right_reg, int right_scope, char* right_type, int right_arg_type, char* last_expr_type) {
     char arithmetic_print[256] = {0};
     // 
-    generate_arithmetic_var_code(left_op, left_type, right_type, left_arg_type, left_reg, left_scope, operation);
+    generate_arithmetic_var_code(left_op, left_type, right_type, left_arg_type, left_reg, left_scope, operation, last_expr_type);
     printf("left_op: %s\nleft_type: %s\nleft_arg_type: %d\nleft_reg: %d\nleft_scope: %d\n", left_op, left_type, left_arg_type, left_reg, left_scope);
 
-    generate_arithmetic_var_code(right_op, right_type, left_type, right_arg_type, right_reg, right_scope, operation);
+    generate_arithmetic_var_code(right_op, right_type, left_type, right_arg_type, right_reg, right_scope, operation, last_expr_type);
     printf("right_op: %s\nright_type: %s\nright_arg_type: %d\nright_reg: %d\nright_scope: %d\n", right_op, right_type, right_arg_type, right_reg, right_scope);
 
     generate_arithmetic_op_code(operation, left_type, right_type);
@@ -99,7 +153,7 @@ void process_arithmetic(char* operation, char* left_op, int left_reg, int left_s
 // name: var name
 // t_type: data type (int/float)
 // a_type: argument type (variable/constant/expression)
-void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type, int a_type, int reg, int scope, char* operation) {
+void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type, int a_type, int reg, int scope, char* operation, char* last_expr_type) {
     char output_buf[OUTPUT_BUF_SIZE] = {0};
     char type_buf[16] = {0};
     // char operation_buf[8] = {0};
@@ -144,6 +198,7 @@ void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type,
     }
     else {
         // Expression
+        return;
     }
     
     //------------------------------------------CASTING INT TO FLOAT------------------------------------------
@@ -154,9 +209,15 @@ void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type,
     if(strcmp(t_type, right_op_type) != 0) {
         // Different types
         // operation_buf[1] = 'f';
+        printf("----DIFFERENT OPERAND TYPES\n----");
+        strcpy(last_expr_type, "float");
         if(strcmp(t_type, "int") == 0) {
+            printf("---- IS INT\n----");
             strcpy(cast_buf, "\ti2f\n");
         }
+    }
+    else {
+        strcpy(last_expr_type, "int");
     }
 
     //------------------------------------------CODE FOR ARITHMETIC OPERATION------------------------------------------
@@ -181,7 +242,10 @@ void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type,
     // }
 
     // strcat(output_buf, operation_buf);
+    strcat(output_buf, cast_buf);
+    printf("OUTPUT BUFFER: %s\n\n", output_buf);
     write_to_file(output_buf);
+
 }
 
 void generate_arithmetic_op_code(char* operation, char* left_type, char* right_type) {
@@ -213,4 +277,15 @@ void generate_arithmetic_op_code(char* operation, char* left_type, char* right_t
     }
     
     write_to_file(output_buf);
+}
+
+void generate_cast_code(char* left_type, char* right_type) {
+    if(strcmp(left_type, right_type) != 0) {
+        if(strcmp(left_type, "float") == 0) {
+            write_to_file("\ti2f\n");
+        }
+        else if(strcmp(left_type, "int") == 0) {
+            write_to_file("\tf2i\n");
+        }
+    }
 }
