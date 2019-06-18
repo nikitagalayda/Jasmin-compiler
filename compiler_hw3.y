@@ -329,6 +329,8 @@ assignment_expression
         //     sprintf(output_buf, "\tfstore %d\n", left_reg);
         // }
         // write_to_file(output_buf);
+        free(last_expr_type);
+        last_expr_type = NULL;
     }
     | logical_expression {
         strcpy($$, $1);
