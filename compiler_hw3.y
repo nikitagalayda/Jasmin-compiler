@@ -37,8 +37,9 @@ bool function_error = false;
 char error_msg[128];
 char error_cause_name[32];
 node_t* curr_node;
-char func_def_param_types[32] = {0};
-FILE *jasmine_file;
+char func_def_param_types[32] = {0};    // functions parameter type list, used for jasmine code generation for functions
+char* last_expr_type = NULL;            // the type of last arithmetic expression
+FILE* jasmine_file;                     // final file that is written to
 
 
 #define TRAVERSE_LIST(i) for(node_t* it = symbol_table[i]; it; it=it->next)
@@ -61,7 +62,7 @@ void set_err_msg(bool, bool, char*);
 void erase_table_scope(int);
 int find_highest_reg(int);
 int find_var_reg(char*, int);
-//void add_func_name(char*);
+int find_var(char*, int, int*, int*, char*);
 %}
 
 /* Use variable or self-defined structure to represent
@@ -103,15 +104,19 @@ int find_var_reg(char*, int);
 %type <string> logical_expression
 %type <string> relational_expression
 // %type <string> arithmetic_expression
-%type <string> additive_expression
-%type <string> multiplicative_expression
 %type <string> unary_expression
 %type <string> postfix_expression
 %type <string> primary_expression
 %type <string> constant
 
+%type <string> cast_expression
+
 // Arithmetics
-%type <string> arithmetic_operator
+%type <string> additive_expression
+%type <string> multiplicative_expression
+%type <string> arithmetic_operator_high
+%type <string> arithmetic_operator_low
+
 
 // Assigment expressions (a = b + c)
 %type <string> assignment_operator
@@ -215,7 +220,7 @@ print_func
 ;
 
 primary_expression
-	: ID { lookup_symbol(yytext, curr_scope); strcat(error_msg, error_cause_name); }
+	: ID { strcpy($$, yytext); lookup_symbol(yytext, curr_scope); strcat(error_msg, error_cause_name); }
 	| constant {
         strcpy($$, $1);
     }
@@ -301,16 +306,60 @@ relational_expression
 
 additive_expression
 	: multiplicative_expression
-	| additive_expression ADD multiplicative_expression
-	| additive_expression SUB multiplicative_expression
+	| additive_expression arithmetic_operator_low multiplicative_expression {
+        sprintf($$, "%s %s %s", $1, $2, $3);
+        int var_scope, var_scope2;
+        int var_reg, var_reg2;
+        char var_type[32] = {0};
+        char var_type2[32] = {0};
+        if(!last_expr_type) {
+            last_expr_type = (char*)malloc(128);
+        }
+        
+        // check whether the arguments of multiplication are variables or constants
+        // arg_type { 1 : variable, 2 : constant, 3 : expression}
+
+        printf("VAR1: %s\nVAR2: %s\n", $1, $3);
+        int arg_type = find_var($1, curr_scope, &var_reg, &var_scope, var_type);
+        printf("1st arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $1, arg_type, var_type, var_reg);
+
+        int arg_type2 = find_var($3, curr_scope, &var_reg2, &var_scope2, var_type2);
+        printf("2nd arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $3, arg_type2, var_type2, var_reg2);
+
+        // Send all information to function which produces Jasmine code
+        // void process_arithmetic(char* operation, char* left_op, int left_reg, int left_scope, char* left_type, int left_arg_type, char* right_op, int right_reg, int right_scope, char* right_type, char* operator, int right_arg_type, char* last_expr_type) {
+        process_arithmetic($2, $1, var_reg, var_scope, var_type, arg_type, $3, var_reg2, var_scope2, var_type2, arg_type2, last_expr_type);
+    }
 ;
 
 multiplicative_expression
 	: cast_expression
-	| multiplicative_expression MUL cast_expression
-	| multiplicative_expression DIV cast_expression
-	| multiplicative_expression MOD cast_expression
-	;
+	| multiplicative_expression arithmetic_operator_high cast_expression {
+        sprintf($$, "%s %s %s", $1, $2, $3);
+        int var_scope, var_scope2;
+        int var_reg, var_reg2;
+        char var_type[32] = {0};
+        char var_type2[32] = {0};
+        if(!last_expr_type) {
+            last_expr_type = (char*)malloc(128);
+        }
+        
+        // check whether the arguments of multiplication are variables or constants
+        // arg_type { 1 : variable, 2 : constant, 3 : expression}
+
+        printf("VAR1: %s\nVAR2: %s\n", $1, $3);
+        int arg_type = find_var($1, curr_scope, &var_reg, &var_scope, var_type);
+        printf("1st arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $1, arg_type, var_type, var_reg);
+
+        int arg_type2 = find_var($3, curr_scope, &var_reg2, &var_scope2, var_type2);
+        printf("2nd arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $3, arg_type2, var_type2, var_reg2);
+
+        // Send all information to function which produces Jasmine code
+        // void process_arithmetic(char* operation, char* left_op, int left_reg, int left_scope, char* left_type, int left_arg_type, char* right_op, int right_reg, int right_scope, char* right_type, char* operator, int right_arg_type, char* last_expr_type) {
+        process_arithmetic($2, $1, var_reg, var_scope, var_type, arg_type, $3, var_reg2, var_scope2, var_type2, arg_type2, last_expr_type);
+
+    }
+;
 
 /*
 arithmetic_expression
@@ -343,7 +392,9 @@ unary_expression
 ;
 
 cast_expression
-    : unary_expression
+    : unary_expression {
+        strcpy($$, $1);
+    }
     | LB type RB cast_expression
 ;
 
@@ -373,14 +424,17 @@ argument_expression_list
 	| argument_expression_list COMMA assignment_expression
 ;
 
-arithmetic_operator
+arithmetic_operator_low
     : ADD {
         strcpy($$, "+");
     }
     | SUB {
         strcpy($$, "-");
     }
-    | MUL {
+;
+
+arithmetic_operator_high
+    : MUL {
         strcpy($$, "*");
     }
     | DIV {
@@ -497,7 +551,7 @@ void insert_symbol(char* dtype, char* name, char* etype, int scope) {
         new_node->reg_id = -1;
     }
 
-    printf("ASSIGN %s REG %d\n", name, new_node->reg_id);
+    // printf("ASSIGN %s REG %d\n", name, new_node->reg_id);
 
     if(strcmp(etype, "parameter") == 0) {
         // is a parameter
@@ -589,6 +643,50 @@ int find_var_reg(char* name, int scope) {
         }
     }
     return -1;
+}
+
+int find_var(char* name, int scope, int* req_reg, int* req_scope, char* req_type) {
+    *req_scope = -1;
+    *req_reg = -1;
+    for(int i = scope; i >= 0; i--) {
+        // because head is not a true node of the table (just there for reference)
+        // we don't want to traverse it. So we start from the node after it.
+        TRAVERSE_LIST_AFTER_HEAD(i) {
+            if(strcmp(name, it->name) == 0) {
+                *req_scope = it->scope_level;
+                *req_reg = it->reg_id;
+                strcpy(req_type, it->data_type);
+                // Is a variable
+                return 1;
+            }
+        }
+    }
+
+    int is_float = 0;
+    // Get the type of the constant
+    for(int i = 0; i < strlen(name); i++) {
+        if(((name[i] >= 48) && (name[i] <= 57)) || (name[i] == 45)) {
+            // Current char is a number
+            continue;
+        }
+        else if(name[i] == 46) {
+            // Has a '.', is a float
+            is_float = 1;
+        }
+        else {
+            // Is an expression
+            // Insert last expression type
+            strcpy(req_type, last_expr_type);
+            return 3;
+        }
+    }
+    if(is_float) {
+        strcpy(req_type, "float");
+    }
+    else {
+        strcpy(req_type, "int");
+    }
+    return 2;
 }
 
 void dump_symbol(bool last_print) {

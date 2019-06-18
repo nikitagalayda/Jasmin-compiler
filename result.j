@@ -7,7 +7,6 @@
 .limit locals 50
 	ldc 0
 	istore 2
-	ldc 0
-	istore 3
-	ldc 1
-	fstore 4
+	iload 0
+	ldc 6.000000
+	fadd
