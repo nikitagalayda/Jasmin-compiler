@@ -40,7 +40,7 @@ node_t* curr_node;
 char func_def_param_types[32] = {0};    // functions parameter type list, used for jasmine code generation for functions
 char* last_expr_type = NULL;            // the type of last arithmetic expression
 FILE* jasmine_file;                     // final file that is written to
-
+char func_return_type[16] = {0};        // function definition return type buffer 
 
 #define TRAVERSE_LIST(i) for(node_t* it = symbol_table[i]; it; it=it->next)
 #define TRAVERSE_LIST_AFTER_HEAD(i) for(node_t* it = symbol_table[i]->next; it; it=it->next)
@@ -147,12 +147,18 @@ stat
 ;
 
 return_expression
-    : RET SEMICOLON
-    | RET assignment_expression SEMICOLON
+    : RET SEMICOLON {
+        generate_func_definition_end(func_return_type);
+    }
+    | RET assignment_expression SEMICOLON {
+        generate_func_definition_end(func_return_type);
+    }
 ;
 
 declaration
     : type id_expression ASGN expression SEMICOLON { 
+        // Variable declaration
+
         // printf("\nexpression: %s\n", $4);
         // Check if we need to cast assigned value (right side) to type of left side or vise versa
         int right_side_type = find_var_data($4, curr_scope, 2);
@@ -172,7 +178,9 @@ declaration
             // process_var_assgn_single($4, $1, right_side_type, "none", right_reg, left_reg);
         }
     }
-    | type id_expression SEMICOLON { 
+    | type id_expression SEMICOLON {
+        // Variable definition
+
         insert_symbol($1, $2, "variable", curr_scope); 
         int reg = 0;
         if(curr_scope != 0) {
@@ -181,10 +189,16 @@ declaration
         process_variable($2, NULL, $1, curr_scope, reg);
     }
     | type id_expression LB func_item_list RB { 
+        // Function definition
+
         insert_symbol($1, $2, "function", curr_scope); 
         process_function_definition($1, $2, func_def_param_types);
+        strcpy(func_return_type, $1);
+        // write_to_file(".end method\n");
     }
     | type id_expression LB func_item_list RB SEMICOLON {
+        // Function call
+
         insert_symbol($1, $2, "function_decl", curr_scope);
         erase_table_scope(curr_scope+1); 
     }
@@ -211,8 +225,16 @@ func_item
 ;
 
 compound_stat
-    : LCB {++curr_scope;} RCB {--curr_scope;}
-    | LCB {++curr_scope;} block_item_list RCB { /*dump_symbol(false);*/ --curr_scope; } 
+    : LCB {++curr_scope;} RCB {
+        --curr_scope;
+    }
+    | LCB {++curr_scope;} block_item_list RCB { 
+        /*dump_symbol(false);*/ 
+        --curr_scope; 
+        // if(curr_scope == 0) {
+        //     write_to_file(".end method\n");
+        // }
+    } 
 ;
 
 block_item_list
@@ -231,7 +253,15 @@ expression_stat
 
 print_func
     : PRINT LB QUOTA STR_CONST QUOTA RB SEMICOLON
-    | PRINT LB postfix_expression RB SEMICOLON
+    | PRINT LB postfix_expression RB SEMICOLON {
+        // char* type[8] = {0};
+        int req_reg, req_scope;
+        char req_type[16] = {0};
+
+        int arg_type = find_var($3, curr_scope, &req_reg, &req_scope, req_type);
+        printf("\nPRINT:\nreg: %d\nscope: %d\ntype: %s\narg_type: %d\n", req_reg, req_scope, req_type, arg_type);
+        generate_print_function($3, req_type, req_reg, req_scope);
+    }
 ;
 
 primary_expression
@@ -316,7 +346,9 @@ assignment_expression
             }
             process_var_assgn_single($3, left_type, right_type, right_arg_type, left_reg, right_reg);
         }
-
+        else {
+            process_var_assgn_single($3, left_type, right_type, "expr", left_reg, right_reg);
+        }
         printf("ASSIGNMENT OF %s\n", $1);
         // if(left_type == 1) {
         //     // Integer
@@ -714,6 +746,7 @@ int find_var_data(char* name, int scope, int data) {
             }
         }
     }
+    // Not in table (a constant or an expression)
     return -1;
 }
 

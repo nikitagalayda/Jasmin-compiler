@@ -7,3 +7,5 @@ void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type,
 void generate_arithmetic_op_code(char* operation, char* left_type, char* right_type);
 void generate_cast_code(char* left_type, char* right_type);
 void process_var_assgn_single(char* right_val, char* left_type, char* right_type, char* right_arg_type, int left_reg, int right_reg);
+void generate_func_definition_end(char*);
+void generate_print_function(char*, char*, int, int);

@@ -7,7 +7,7 @@
 
 void write_to_file(char* data) {
     FILE* jasmine_file;
-    jasmine_file = fopen("result.j", "a+");
+    jasmine_file = fopen("compiler_hw3.j", "a+");
     fwrite(data , 1 , strlen(data), jasmine_file);
     fclose(jasmine_file);
 }
@@ -21,6 +21,7 @@ void process_function_definition(char* return_type, char* func_name, char* arg_t
     }
     type_map(return_type, func_ret_buf);
     sprintf(func_buf, ".method public static %s(%s)%s\n.limit stack 50\n.limit locals 50\n", func_name, arg_types, func_ret_buf);
+
     write_to_file(func_buf);
 }
 
@@ -66,36 +67,23 @@ void process_var_assgn_single(char* right_val, char* left_type, char* right_type
     char right_type_str[8] = {0};
     char left_type_str[8] = {0};
 
-    // if(right_type == 1) {
-    //     strcpy(right_type_str, "int");
-    // }
-    // else {
-    //     strcpy(right_type_str, "float");
-    // }
-
-    // if(left_type == 1) {
-    //     strcpy(left_type_str, "int");
-    // }
-    // else {
-    //     strcpy(left_type_str, "float");
-    // }
-
-
-    if(right_reg < 0) {
-        // Right side is a constant.
-        sprintf(output_buf, "\tldc %s\n", right_val);
-    }
-    else {
-        if(strcmp(right_type, "float") == 0) {
-            sprintf(output_buf, "\tfload %d\n", right_reg);
+    if(strcmp(right_arg_type, "expr") != 0) {
+        if(right_reg < 0) {
+            // Right side is a constant.
+            sprintf(output_buf, "\tldc %s\n", right_val);
         }
         else {
-            sprintf(output_buf, "\tiload %d\n", right_reg);
+            if(strcmp(right_type, "float") == 0) {
+                sprintf(output_buf, "\tfload %d\n", right_reg);
+            }
+            else if(strcmp(right_type, "int") == 0) {
+                sprintf(output_buf, "\tiload %d\n", right_reg);
+            }
+            // Right side is a constant.
         }
-        // Right side is a constant.
+        // Write the correct load.
+        write_to_file(output_buf);
     }
-    // Write the correct load.
-    write_to_file(output_buf);
 
     printf("----%s\n", right_type);
     printf("----%s\n", left_type);
@@ -288,4 +276,52 @@ void generate_cast_code(char* left_type, char* right_type) {
             write_to_file("\tf2i\n");
         }
     }
+}
+
+void generate_func_definition_end(char* return_type) {
+    if(strcmp(return_type, "int") == 0) {
+        write_to_file("\tireturn\n");
+    }
+    else if(strcmp(return_type, "float") == 0) {
+        write_to_file("\tfreturn\n");
+    }
+    else {
+        write_to_file("\treturn\n");
+    }
+    write_to_file(".end method\n");
+}
+
+void generate_print_function(char* val, char* type, int reg, int scope) {
+    char output_buf[256] = {0};
+    char load_buf[16] = {0};
+    char type_buf[64] = {0};
+
+
+    if(strcmp(type, "float") == 0) {
+            // float
+            sprintf(load_buf, "\tfload %d\n", reg);
+            // strcpy(type_buf, "F");
+            strcpy(output_buf, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n\tswap\n\tinvokevirtual java/io/PrintStream/println(F)V\n");
+    }
+    else {
+        //int 
+        sprintf(load_buf, "\tiload %d\n", reg);
+        // strcpy(type_buf, "I");
+        strcpy(output_buf, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n\tswap\n\tinvokevirtual java/io/PrintStream/println(I)V\n");
+    }
+
+    if(reg < 0) {
+        // Constant or global variable
+        if(scope == 0) {
+            char type_mapped[8] = {0};
+            type_map(type, type_mapped);
+
+            sprintf(load_buf, "\tgetstatic compiler_hw3/%s %s\n", val, type_mapped);
+        }
+        else {
+            sprintf(load_buf, "\tldc %s\n", val);
+        }
+    }
+    write_to_file(load_buf);
+    write_to_file(output_buf);
 }
