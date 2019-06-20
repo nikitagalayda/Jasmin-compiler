@@ -187,7 +187,6 @@ declaration
         int left_reg = find_var_data($2, curr_scope, 1);
         int right_reg = find_var_data($4, curr_scope, 1);
         // generate_cast_code(type, right_type)
-
         insert_symbol($1, $2, "variable", curr_scope);
         int reg = 0;
         if(curr_scope != 0) {

@@ -47,12 +47,20 @@ void process_variable(char* name, char* value, char* type, int scope, int reg) {
         if(strcmp(type, "float") == 0) {
             strcpy(store, "fstore");
         }
+        else if(strcmp(type, "string") == 0) {
+            strcpy(store, "astore");
+        }
         else {
             strcpy(store, "istore");
         }
 
         if(value) {
-            sprintf(var_buf, "\tldc %s\n\t%s %d\n", value, store, reg);
+            if(strcmp(type, "string") == 0) {
+                sprintf(var_buf, "\tldc \"%s\"\n\t%s %d\n", value, store, reg);
+            }
+            else {
+                sprintf(var_buf, "\tldc %s\n\t%s %d\n", value, store, reg);
+            }
         }
         // if simply declared (ex: int a; then no need for the latter part)
         else {
