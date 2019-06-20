@@ -368,7 +368,6 @@ assignment_expression
             if(!last_expr_type) {
                 last_expr_type = (char*)malloc(128);
             }
-            printf("NOT EQUAL SIGN\n");
             // += *= /= %=
             process_arithmetic($2, $1, left_reg, left_scope, left_type, left_arg_type, $3, right_reg, right_scope, right_type, right_arg_type, last_expr_type);
         }
@@ -489,12 +488,12 @@ multiplicative_expression
         // check whether the arguments of multiplication are variables or constants
         // arg_type { 1 : variable, 2 : constant, 3 : expression}
 
-        printf("VAR1: %s\nVAR2: %s\n", $1, $3);
+        // printf("VAR1: %s\nVAR2: %s\n", $1, $3);
         int arg_type = find_var($1, curr_scope, &var_reg, &var_scope, var_type);
-        printf("1st arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $1, arg_type, var_type, var_reg);
+        // printf("1st arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $1, arg_type, var_type, var_reg);
 
         int arg_type2 = find_var($3, curr_scope, &var_reg2, &var_scope2, var_type2);
-        printf("2nd arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $3, arg_type2, var_type2, var_reg2);
+        // printf("2nd arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $3, arg_type2, var_type2, var_reg2);
 
         // Send all information to function which produces Jasmine code
         // void process_arithmetic(char* operation, char* left_op, int left_reg, int left_scope, char* left_type, int left_arg_type, char* right_op, int right_reg, int right_scope, char* right_type, char* operator, int right_arg_type, char* last_expr_type) {
@@ -574,7 +573,6 @@ postfix_expression
             strcpy(strstr(error_msg, "variable"), "function ");
             strcat(error_msg, error_cause_name);
         }
-        printf("FROM POSTFIX: %s\n", $3);
         // Pass parameter list
         // Pass return type
         char param_type_buf[128] = {0};
@@ -600,7 +598,6 @@ postfix_expression
         if(!last_expr_type) {
             last_expr_type = (char*)malloc(128);
         }
-        printf("INCREMENT SIGN\n%d\n", left_reg);
         // > < <= >= == !=
         process_arithmetic("+", $1, left_reg, left_scope, left_type, left_arg_type, "1", right_reg, right_scope, right_type, right_arg_type, last_expr_type);
 
@@ -625,7 +622,6 @@ postfix_expression
         if(!last_expr_type) {
             last_expr_type = (char*)malloc(128);
         }
-        printf("INCREMENT SIGN\n");
         // > < <= >= == !=
         process_arithmetic("-", $1, left_reg, left_scope, left_type, left_arg_type, "1", right_reg, right_scope, right_type, right_arg_type, last_expr_type);
 
@@ -647,9 +643,9 @@ argument_expression_list
         char req_type[32] = {0};
 
         int arg_type = find_var($1, curr_scope, &req_reg, &req_scope, req_type);
-        printf("-----------------------------------------");
-        printf("IN ARGUMENT EXPRESSION: %s:\nreg: %d\nscope: %d\ntype: %s\n", $1, req_reg, req_scope, req_type);
-        printf("-----------------------------------------");
+        // printf("-----------------------------------------");
+        // printf("IN ARGUMENT EXPRESSION: %s:\nreg: %d\nscope: %d\ntype: %s\n", $1, req_reg, req_scope, req_type);
+        // printf("-----------------------------------------");
 
         load_single_var($1, arg_type, req_scope, req_reg, req_type);
     }
@@ -661,9 +657,9 @@ argument_expression_list
         char req_type[32] = {0};
 
         int arg_type = find_var($3, curr_scope, &req_reg, &req_scope, req_type);
-        printf("-----------------------------------------");
-        printf("IN ARGUMENT EXPRESSION: %s:\nreg: %d\nscope: %d\ntype: %s\n", $3, req_reg, req_scope, req_type);
-        printf("-----------------------------------------");
+        // printf("-----------------------------------------");
+        // printf("IN ARGUMENT EXPRESSION: %s:\nreg: %d\nscope: %d\ntype: %s\n", $3, req_reg, req_scope, req_type);
+        // printf("-----------------------------------------");
 
         load_single_var($3, arg_type, req_scope, req_reg, req_type);
     }
@@ -751,10 +747,9 @@ int main(int argc, char** argv)
 
     int syn_error = yyparse();
     if(!syn_error) {
-        //dump_symbol(true);
-        //printf("\n\nTotal lines: %d \n",yylineno);
+        dump_symbol(true);
+        printf("\n\nTotal lines: %d \n",yylineno);
     }
-    //free_func_list();
     return 0;
 }
 

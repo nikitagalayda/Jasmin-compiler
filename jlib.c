@@ -85,9 +85,6 @@ void process_var_assgn_single(char* right_val, char* left_type, char* right_type
         write_to_file(output_buf);
     }
 
-    printf("----%s\n", right_type);
-    printf("----%s\n", left_type);
-
     generate_cast_code(left_type, right_type);
 
     if(strcmp(left_type, "int") == 0) {
@@ -128,8 +125,8 @@ void type_map(char* type, char* dest) {
 void process_arithmetic(char* operation, char* left_op, int left_reg, int left_scope, char* left_type, int left_arg_type, char* right_op, int right_reg, int right_scope, char* right_type, int right_arg_type, char* last_expr_type) {
     // char arithmetic_print[256] = {0};
     // 
-    printf("left_op: %s\nleft_type: %s\nleft_arg_type: %d\nleft_reg: %d\nleft_scope: %d\n", left_op, left_type, left_arg_type, left_reg, left_scope);
-    printf("right_op: %s\nright_type: %s\nright_arg_type: %d\nright_reg: %d\nright_scope: %d\n", right_op, right_type, right_arg_type, right_reg, right_scope);
+    // printf("left_op: %s\nleft_type: %s\nleft_arg_type: %d\nleft_reg: %d\nleft_scope: %d\n", left_op, left_type, left_arg_type, left_reg, left_scope);
+    // printf("right_op: %s\nright_type: %s\nright_arg_type: %d\nright_reg: %d\nright_scope: %d\n", right_op, right_type, right_arg_type, right_reg, right_scope);
 
     generate_arithmetic_var_code(left_op, left_type, right_type, left_arg_type, left_reg, left_scope, operation, last_expr_type);
     generate_arithmetic_var_code(right_op, right_type, left_type, right_arg_type, right_reg, right_scope, operation, last_expr_type);
@@ -160,7 +157,7 @@ void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type,
     //------------------------------------------CODE BASED ON TYPE------------------------------------------
     if(a_type == 1) {
         // Variable
-        printf("----------name: %s\n-----------reg: %d\n------------scope: %d\n------------type: %d\n", name, reg, scope, a_type);
+        // printf("----------name: %s\n-----------reg: %d\n------------scope: %d\n------------type: %d\n", name, reg, scope, a_type);
         if(scope > 0) {
             // Local variable
             // if(strcmp(t_type, "int")) {
@@ -193,22 +190,18 @@ void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type,
     //------------------------------------------CASTING INT TO FLOAT------------------------------------------
     // Assume both operands are ints
     // strcat(operation_buf,"\ti");
-    printf("COMPARING RIGHT_OP_TYPE\n");
-    printf("\nt_type: %s\nright_op_type: %s\n", t_type, right_op_type);
+    // printf("\nt_type: %s\nright_op_type: %s\n", t_type, right_op_type);
     // Check if one of the operands is a float
     if(strcmp(t_type, right_op_type) != 0) {
-        printf("IN COMPARISON RIGHT_OP_TYPE\n");
+        // printf("IN COMPARISON RIGHT_OP_TYPE\n");
         // Different types
         // operation_buf[1] = 'f';
-        printf("----DIFFERENT OPERAND TYPES\n----");
         strcpy(last_expr_type, "float");
         if(strcmp(t_type, "int") == 0) {
-            printf("---- IS INT\n----");
             strcpy(cast_buf, "\ti2f\n");
         }
     }
     else {
-        printf("im fucking u\n");
         strcpy(last_expr_type, "int");
     }
 
@@ -216,7 +209,6 @@ void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type,
 
     // strcat(output_buf, operation_buf);
     strcat(output_buf, cast_buf);
-    printf("OUTPUT BUFFER: %s\n\n", output_buf);
     write_to_file(output_buf);
 
 }
@@ -362,7 +354,6 @@ void generate_function_call(char* name, char* param_types, char* params, char* r
     char params_buf[64] = {0};
     char output_buf[256] = {0};
     char return_type[8] = {0};
-    printf("RT: %s\n\n", ret_type);
     type_map(ret_type, return_type);
 
     // load_func_params(param_types, params);
@@ -374,7 +365,6 @@ void generate_function_call(char* name, char* param_types, char* params, char* r
         strcat(params_buf, mapped_type);
         token = strtok(NULL, ",");
     }
-    printf("FINAL TYPES: %s\n", params_buf);
     if(strlen(params_buf) == 0) {
         strcpy(params_buf, "V");
     }
