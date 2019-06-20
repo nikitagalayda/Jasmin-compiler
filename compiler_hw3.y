@@ -122,12 +122,18 @@ void get_func_params(char*, char*, char*, int);
 %type <string> multiplicative_expression
 %type <string> arithmetic_operator_high
 %type <string> arithmetic_operator_low
+%type <string> relational_operator
 
 // Print
 %type <string> str_const_expression
 
 // Assigment expressions (a = b + c)
 %type <string> assignment_operator
+
+// Function call
+%type <string> argument_expression_list
+
+
 
 //%type <string> func_item_list // A string containing types of function arguments (ex: III...I)
 /* Yacc will start at this nonterminal */
@@ -156,6 +162,17 @@ return_expression
         generate_func_definition_end(func_return_type);
     }
     | RET assignment_expression SEMICOLON {
+
+        int req_scope, req_reg;
+        char req_type[32] = {0};
+
+        int arg_type = find_var($2, curr_scope, &req_reg, &req_scope, req_type);
+        // printf("-----------------------------------------");
+        // printf("IN RETURN: %s:\nreg: %d\nscope: %d\ntype: %s\n", $2, req_reg, req_scope, req_type);
+        // printf("-----------------------------------------");
+
+        load_single_var($2, arg_type, req_scope, req_reg, req_type);
+
         generate_func_definition_end(func_return_type);
     }
 ;
@@ -202,7 +219,7 @@ declaration
         // write_to_file(".end method\n");
     }
     | type id_expression LB func_item_list RB SEMICOLON {
-        // Function call
+        // Function declaration
 
         insert_symbol($1, $2, "function_decl", curr_scope);
         erase_table_scope(curr_scope+1);
@@ -212,7 +229,7 @@ declaration
 func_item_list
     : func_item_list COMMA func_item {
         type_map($3, func_def_param_types);
-        printf("%s\n", func_def_param_types);
+        // printf("%s\n", func_def_param_types);
     }
     | func_item {
         type_map($1, func_def_param_types);
@@ -234,11 +251,9 @@ compound_stat
         --curr_scope;
     }
     | LCB {++curr_scope;} block_item_list RCB { 
+        // write_to_file("LABEL TRUE:\n");
         /*dump_symbol(false);*/ 
         --curr_scope; 
-        // if(curr_scope == 0) {
-        //     write_to_file(".end method\n");
-        // }
     } 
 ;
 
@@ -258,7 +273,7 @@ expression_stat
 
 print_func
     : PRINT LB constant RB SEMICOLON {
-        printf("PRINT STRING: %s\n", $3);
+        // printf("PRINT STRING: %s\n", $3);
         generate_print_function($3, "str", -1, -1);
     }
     | PRINT LB postfix_expression RB SEMICOLON {
@@ -267,15 +282,14 @@ print_func
         char req_type[16] = {0};
 
         int arg_type = find_var($3, curr_scope, &req_reg, &req_scope, req_type);
-        printf("\nPRINT:\nreg: %d\nscope: %d\ntype: %s\narg_type: %d\n", req_reg, req_scope, req_type, arg_type);
+        // printf("\nPRINT:\nreg: %d\nscope: %d\ntype: %s\narg_type: %d\n", req_reg, req_scope, req_type, arg_type);
         generate_print_function($3, req_type, req_reg, req_scope);
     }
 ;
 
 primary_expression
-	: ID { printf("\nin primary expression ID!! %s\n", yytext); strcpy($$, yytext); lookup_symbol(yytext, curr_scope); strcat(error_msg, error_cause_name); }
+	: ID { strcpy($$, yytext); lookup_symbol(yytext, curr_scope); strcat(error_msg, error_cause_name); }
 	| constant {
-        printf("\nin primary expression constant!!\n");
         strcpy($$, $1);
         // Make instructions for single constant
     }
@@ -316,7 +330,6 @@ constant
 
 str_const_expression
     : STR_CONST {
-        printf("STRING: %s\n", yytext);
         strcpy($$, yytext);
     }
 ;
@@ -348,11 +361,18 @@ assignment_expression
         int left_arg_type = find_var($1, curr_scope, &left_reg, &left_scope, left_type);
         int right_arg_type = find_var($3, curr_scope, &right_reg, &right_scope, right_type);
 
-        printf("ASSIGNMENT EXPRESSION OPERANDS:\n%s----:\ntype: %s\nreg: %d\narg_type: %d\n%s----:\ntype: %s\nreg: %d\narg_type: %d\n", $1, left_type, left_reg, left_arg_type, $3, right_type, right_reg, right_arg_type);
+        // printf("ASSIGNMENT EXPRESSION OPERANDS:\n%s----:\ntype: %s\nreg: %d\narg_type: %d\n%s----:\ntype: %s\nreg: %d\narg_type: %d\n", $1, left_type, left_reg, left_arg_type, $3, right_type, right_reg, right_arg_type);
 
-        char output_buf[32] = {0};
-
-        if(last_expr_type == NULL) {
+        // char output_buf[32] = {0};
+        if(strcmp($2, "=") != 0) {
+            if(!last_expr_type) {
+                last_expr_type = (char*)malloc(128);
+            }
+            printf("NOT EQUAL SIGN\n");
+            // += *= /= %=
+            process_arithmetic($2, $1, left_reg, left_scope, left_type, left_arg_type, $3, right_reg, right_scope, right_type, right_arg_type, last_expr_type);
+        }
+        if(last_expr_type == NULL && right_arg_type != 4) {
             // Single symbol on right side
             char right_arg_type[16] = {0};
             strcpy(right_arg_type, "const");
@@ -362,23 +382,20 @@ assignment_expression
             }
             process_var_assgn_single($3, left_type, right_type, right_arg_type, left_reg, right_reg);
         }
+        else if(last_expr_type == NULL && right_arg_type == 4) {
+            // if(last_expr_type == NULL) {
+            // Right side is a function
+            // load all parameters
+            process_var_assgn_single($3, left_type, right_type, "function", left_reg, right_reg);
+        }
         else {
+            // Expression on right side
             process_var_assgn_single($3, left_type, right_type, "expr", left_reg, right_reg);
         }
-        printf("ASSIGNMENT OF %s\n", $1);
-        // if(left_type == 1) {
-        //     // Integer
-        //     printf("%s IS AN INTEGER\n", $1);
-        //     sprintf(output_buf, "\tistore %d\n", left_reg);
-        // }
-        // else if(left_type == 2) {
-        //     // Float
-        //     printf("%s IS A FLOAT\n", $1);
-        //     sprintf(output_buf, "\tfstore %d\n", left_reg);
-        // }
-        // write_to_file(output_buf);
-        free(last_expr_type);
-        last_expr_type = NULL;
+        if(last_expr_type) {
+            free(last_expr_type);
+            last_expr_type = NULL;
+        }
     }
     | logical_expression {
         strcpy($$, $1);
@@ -402,7 +419,27 @@ relational_expression
 */
 
 relational_expression
-    : relational_expression relational_operator additive_expression
+    : relational_expression relational_operator additive_expression {
+        int left_scope, right_scope;
+        int left_reg, right_reg;
+        char left_type[32] = {0};
+        char right_type[32] = {0};
+
+        int left_arg_type = find_var($1, curr_scope, &left_reg, &left_scope, left_type);
+        int right_arg_type = find_var($3, curr_scope, &right_reg, &right_scope, right_type);
+
+        if(!last_expr_type) {
+            last_expr_type = (char*)malloc(128);
+        }
+        // > < <= >= == !=
+        process_arithmetic($2, $1, left_reg, left_scope, left_type, left_arg_type, $3, right_reg, right_scope, right_type, right_arg_type, last_expr_type);
+        generate_while_branch($2);
+
+        if(last_expr_type) {
+            free(last_expr_type);
+            last_expr_type = NULL;
+        }
+    }
     | additive_expression {
         // strcpy($$, $1);
     }
@@ -424,12 +461,12 @@ additive_expression
         // check whether the arguments of multiplication are variables or constants
         // arg_type { 1 : variable, 2 : constant, 3 : expression}
 
-        printf("VAR1: %s\nVAR2: %s\n", $1, $3);
+        // printf("VAR1: %s\nVAR2: %s\n", $1, $3);
         int arg_type = find_var($1, curr_scope, &var_reg, &var_scope, var_type);
-        printf("1st arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $1, arg_type, var_type, var_reg);
+        // printf("1st arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $1, arg_type, var_type, var_reg);
 
         int arg_type2 = find_var($3, curr_scope, &var_reg2, &var_scope2, var_type2);
-        printf("2nd arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $3, arg_type2, var_type2, var_reg2);
+        // printf("2nd arg:%s\narg_type: %d\nvar_type: %s\nvar_reg: %d\n", $3, arg_type2, var_type2, var_reg2);
 
         // Send all information to function which produces Jasmine code
         // void process_arithmetic(char* operation, char* left_op, int left_reg, int left_scope, char* left_type, int left_arg_type, char* right_op, int right_reg, int right_scope, char* right_type, char* operator, int right_arg_type, char* last_expr_type) {
@@ -479,12 +516,24 @@ arithmetic_expression
 */
 
 relational_operator
-    : MT
-    | LT
-    | MTE
-    | LTE
-    | EQ
-    | NE
+    : MT {
+        strcpy($$, ">");
+    }
+    | LT {
+        strcpy($$, "<");
+    }
+    | MTE {
+        strcpy($$, ">=");
+    }
+    | LTE {
+        strcpy($$, "<=");
+    }
+    | EQ {
+        strcpy($$, "==");
+    }
+    | NE {
+        strcpy($$, "!=");
+    }
 ;
 
 unary_expression
@@ -508,47 +557,116 @@ postfix_expression
         strcpy($$, $1);
     }
 	| postfix_expression LB RB {
-        //printf("FUNCTION\n");
         if(semantic_error) {
             strcpy(strstr(error_msg, "variable"), "function ");
             strcat(error_msg, error_cause_name);
         }
-        char param_buf[128] = {0};
+        char param_type_buf[128] = {0};
         char return_type[16] = {0};
 
-        get_func_params($1, param_buf, return_type, curr_scope);
-        // int ret_type = find_var_data($1, curr_scope, 2);
-
-        printf("FUNCTION %s PARAMS ARE: %s\n", $1, param_buf);
+        get_func_params($1, param_type_buf, return_type, curr_scope);
+        // printf("FUNCTION %s PARAMS ARE: %s\n", $1, param_type_buf);
         // (parameter_type, return_type)
-        generate_function_call(param_buf, return_type);
+        generate_function_call($1, param_type_buf, NULL, return_type);
     }
 	| postfix_expression LB argument_expression_list RB {
         if(semantic_error) {
             strcpy(strstr(error_msg, "variable"), "function ");
             strcat(error_msg, error_cause_name);
         }
-
+        printf("FROM POSTFIX: %s\n", $3);
         // Pass parameter list
         // Pass return type
-        char param_buf[128] = {0};
+        char param_type_buf[128] = {0};
         char return_type[16] = {0};
 
-        get_func_params($1, param_buf, return_type, curr_scope);
+        get_func_params($1, param_type_buf, return_type, curr_scope);
         // int ret_type = find_var_data($1, curr_scope, 2);
 
-        // printf("FUNCTION %s PARAMS ARE: %s\n", $1, param_buf);
+        // printf("FUNCTION %s PARAMS ARE: %s\n", $1, param_type_buf);
         // (parameter_type, return_type)
-        generate_function_call(param_buf, return_type);
+        generate_function_call($1, param_type_buf, $3, return_type);
 
     }
-	| postfix_expression INC
-	| postfix_expression DEC
+	| postfix_expression INC {
+        int left_scope, right_scope;
+        int left_reg, right_reg;
+        char left_type[32] = {0};
+        char right_type[32] = {0};
+
+        int left_arg_type = find_var($1, curr_scope, &left_reg, &left_scope, left_type);
+        int right_arg_type = find_var("1", curr_scope, &right_reg, &right_scope, right_type);
+
+        if(!last_expr_type) {
+            last_expr_type = (char*)malloc(128);
+        }
+        printf("INCREMENT SIGN\n%d\n", left_reg);
+        // > < <= >= == !=
+        process_arithmetic("+", $1, left_reg, left_scope, left_type, left_arg_type, "1", right_reg, right_scope, right_type, right_arg_type, last_expr_type);
+
+        if(last_expr_type) {
+            free(last_expr_type);
+            last_expr_type = NULL;
+        }
+        char output_buf[256] = {0};
+        sprintf(output_buf, "\tistore %d\n", left_reg);
+        write_to_file(output_buf);
+
+    }
+	| postfix_expression DEC {
+        int left_scope, right_scope;
+        int left_reg, right_reg;
+        char left_type[32] = {0};
+        char right_type[32] = {0};
+
+        int left_arg_type = find_var($1, curr_scope, &left_reg, &left_scope, left_type);
+        int right_arg_type = find_var("1", curr_scope, &right_reg, &right_scope, right_type);
+
+        if(!last_expr_type) {
+            last_expr_type = (char*)malloc(128);
+        }
+        printf("INCREMENT SIGN\n");
+        // > < <= >= == !=
+        process_arithmetic("-", $1, left_reg, left_scope, left_type, left_arg_type, "1", right_reg, right_scope, right_type, right_arg_type, last_expr_type);
+
+        if(last_expr_type) {
+            free(last_expr_type);
+            last_expr_type = NULL;
+        }
+        char output_buf[256] = {0};
+        sprintf(output_buf, "\tistore %d\n", left_reg);
+        write_to_file(output_buf);
+    }
 ;
 
 argument_expression_list
-	: assignment_expression
-	| argument_expression_list COMMA assignment_expression
+	: assignment_expression {
+        strcpy($$, $1);
+
+        int req_scope, req_reg;
+        char req_type[32] = {0};
+
+        int arg_type = find_var($1, curr_scope, &req_reg, &req_scope, req_type);
+        printf("-----------------------------------------");
+        printf("IN ARGUMENT EXPRESSION: %s:\nreg: %d\nscope: %d\ntype: %s\n", $1, req_reg, req_scope, req_type);
+        printf("-----------------------------------------");
+
+        load_single_var($1, arg_type, req_scope, req_reg, req_type);
+    }
+	| argument_expression_list COMMA assignment_expression {
+        strcat($$, ",");
+        strcat($$, $3);
+
+        int req_scope, req_reg;
+        char req_type[32] = {0};
+
+        int arg_type = find_var($3, curr_scope, &req_reg, &req_scope, req_type);
+        printf("-----------------------------------------");
+        printf("IN ARGUMENT EXPRESSION: %s:\nreg: %d\nscope: %d\ntype: %s\n", $3, req_reg, req_scope, req_type);
+        printf("-----------------------------------------");
+
+        load_single_var($3, arg_type, req_scope, req_reg, req_type);
+    }
 ;
 
 arithmetic_operator_low
@@ -601,7 +719,10 @@ selection_statement
 ;
 
 iteration_statement
-    : WHILE LB expression RB compound_stat 
+    : WHILE { write_to_file("LABEL BEGIN:\n"); } LB expression RB compound_stat {
+        write_to_file("\tgoto LABEL_BEGIN\n");
+        write_to_file("LABEL_FALSE:\n\tgoto EXIT_0\nEXIT_0:\n");
+    } 
     | FOR LB declaration expression_stat expression RB
 ;
 
@@ -794,6 +915,12 @@ int find_var_data(char* name, int scope, int data) {
 }
 
 int find_var(char* name, int scope, int* req_reg, int* req_scope, char* req_type) {
+    // Return:
+    // 1: variable
+    // 2: constant
+    // 3: expression
+    // 4: function
+
     *req_scope = -1;
     *req_reg = -1;
     for(int i = scope; i >= 0; i--) {

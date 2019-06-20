@@ -35,5 +35,9 @@ test_func:
 	rm -f *.j
 	@./${PARSER} < ./example_input/basic_function.c
 
+test_while:
+	rm -f *.j
+	@./${PARSER} < ./example_input/basic_while_statement.c
+
 clean:
 	rm -f *.o ${PARSER} ${OBJECT} 

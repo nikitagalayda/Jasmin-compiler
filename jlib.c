@@ -67,7 +67,7 @@ void process_var_assgn_single(char* right_val, char* left_type, char* right_type
     char right_type_str[8] = {0};
     char left_type_str[8] = {0};
 
-    if(strcmp(right_arg_type, "expr") != 0) {
+    if((strcmp(right_arg_type, "function") != 0) && (strcmp(right_arg_type, "expr") != 0)) {
         if(right_reg < 0) {
             // Right side is a constant.
             sprintf(output_buf, "\tldc %s\n", right_val);
@@ -106,45 +106,33 @@ void process_var_assgn_single(char* right_val, char* left_type, char* right_type
 void type_map(char* type, char* dest) {
     // changed from strcat --> strcpy
     if(strcmp(type, "int") == 0) {
-        strcat(dest, "I");
+        strcpy(dest, "I");
     }
     else if(strcmp(type, "float") == 0) {
-        strcat(dest, "F");
+        strcpy(dest, "F");
     }
     else if(strcmp(type, "bool") == 0) {
-        strcat(dest, "Z");
+        strcpy(dest, "Z");
     }
     else if(strcmp(type, "string") == 0) {
-        strcat(dest, "S");
+        strcpy(dest, "S");
     }
     else if(strcmp(type, "void") == 0) {
-        strcat(dest, "V");
+        strcpy(dest, "V");
     }
     else {
-        strcat(dest, "I");
-    }
-}
-
-void int_type_map(int type, char* dest) {
-    if(type == 1) {
-        strcat(dest, "I");
-    }
-    else if(type == 2) {
-        strcat(dest, "F");
-    }
-    else if(type == 3) {
-        strcat(dest, "V");
+        strcpy(dest, "I");
     }
 }
 
 void process_arithmetic(char* operation, char* left_op, int left_reg, int left_scope, char* left_type, int left_arg_type, char* right_op, int right_reg, int right_scope, char* right_type, int right_arg_type, char* last_expr_type) {
-    char arithmetic_print[256] = {0};
+    // char arithmetic_print[256] = {0};
     // 
-    generate_arithmetic_var_code(left_op, left_type, right_type, left_arg_type, left_reg, left_scope, operation, last_expr_type);
     printf("left_op: %s\nleft_type: %s\nleft_arg_type: %d\nleft_reg: %d\nleft_scope: %d\n", left_op, left_type, left_arg_type, left_reg, left_scope);
-
-    generate_arithmetic_var_code(right_op, right_type, left_type, right_arg_type, right_reg, right_scope, operation, last_expr_type);
     printf("right_op: %s\nright_type: %s\nright_arg_type: %d\nright_reg: %d\nright_scope: %d\n", right_op, right_type, right_arg_type, right_reg, right_scope);
+
+    generate_arithmetic_var_code(left_op, left_type, right_type, left_arg_type, left_reg, left_scope, operation, last_expr_type);
+    generate_arithmetic_var_code(right_op, right_type, left_type, right_arg_type, right_reg, right_scope, operation, last_expr_type);
 
     generate_arithmetic_op_code(operation, left_type, right_type);
 
@@ -205,9 +193,11 @@ void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type,
     //------------------------------------------CASTING INT TO FLOAT------------------------------------------
     // Assume both operands are ints
     // strcat(operation_buf,"\ti");
-
+    printf("COMPARING RIGHT_OP_TYPE\n");
+    printf("\nt_type: %s\nright_op_type: %s\n", t_type, right_op_type);
     // Check if one of the operands is a float
     if(strcmp(t_type, right_op_type) != 0) {
+        printf("IN COMPARISON RIGHT_OP_TYPE\n");
         // Different types
         // operation_buf[1] = 'f';
         printf("----DIFFERENT OPERAND TYPES\n----");
@@ -218,29 +208,11 @@ void generate_arithmetic_var_code(char* name, char* t_type, char* right_op_type,
         }
     }
     else {
+        printf("im fucking u\n");
         strcpy(last_expr_type, "int");
     }
 
     //------------------------------------------CODE FOR ARITHMETIC OPERATION------------------------------------------
-        // Use float instructions
-    // if(strcmp(operation, "*") == 0) {
-    //     strcat(operation_buf, "mul\n");
-    // }
-    // else if(strcmp(operation, "%") == 0) {
-    //     strcat(operation_buf, "mod\n");
-    // }
-    // else if(strcmp(operation, "/") == 0) {
-    //     strcat(operation_buf, "div\n");
-    // }
-    // else if(strcmp(operation, "+") == 0) {
-    //     strcat(operation_buf, "add\n");
-    // }
-    // else if(strcmp(operation, "-") == 0) {
-    //     strcat(operation_buf, "sub\n");
-    // }
-    // else {
-    //     strcat(operation_buf, "arithmetic operator not supported\n");
-    // }
 
     // strcat(output_buf, operation_buf);
     strcat(output_buf, cast_buf);
@@ -271,6 +243,41 @@ void generate_arithmetic_op_code(char* operation, char* left_type, char* right_t
         strcat(output_buf, "add\n");
     }
     else if(strcmp(operation, "-") == 0) {
+        strcat(output_buf, "sub\n");
+    }
+    //--------------------------OPERATION-ASSIGNMENT-----------------
+    else if(strcmp(operation, "-=") == 0) {
+        strcat(output_buf, "sub\n");
+    }
+    else if(strcmp(operation, "+=") == 0) {
+        strcat(output_buf, "add\n");
+    }
+    else if(strcmp(operation, "*=") == 0) {
+        strcat(output_buf, "mul\n");
+    }
+    else if(strcmp(operation, "/=") == 0) {
+        strcat(output_buf, "div\n");
+    }
+    else if(strcmp(operation, "%=") == 0) {
+        strcat(output_buf, "mod\n");
+    }
+    // -------------------------RELATIONAL---------------------------
+    else if(strcmp(operation, ">") == 0) {
+        strcat(output_buf, "sub\n");
+    }
+    else if(strcmp(operation, "<") == 0) {
+        strcat(output_buf, "sub\n");
+    }
+    else if(strcmp(operation, ">=") == 0) {
+        strcat(output_buf, "sub\n");
+    }
+    else if(strcmp(operation, "<=") == 0) {
+        strcat(output_buf, "sub\n");
+    }
+    else if(strcmp(operation, "==") == 0) {
+        strcat(output_buf, "sub\n");
+    }
+    else if(strcmp(operation, "!=") == 0) {
         strcat(output_buf, "sub\n");
     }
     else {
@@ -351,15 +358,16 @@ void generate_print_function(char* val, char* type, int reg, int scope) {
     write_to_file(output_buf);
 }
 
-void generate_function_call(char* params, char* ret_type) {
+void generate_function_call(char* name, char* param_types, char* params, char* ret_type) {
     char params_buf[64] = {0};
     char output_buf[256] = {0};
     char return_type[8] = {0};
     printf("RT: %s\n\n", ret_type);
-    // int_type_map(ret_type, return_type);
     type_map(ret_type, return_type);
 
-    char* token = strtok(params, ",");
+    // load_func_params(param_types, params);
+
+    char* token = strtok(param_types, ",");
     while( token != NULL ) {
         char mapped_type[8] = {0};
         type_map(token, mapped_type);
@@ -370,6 +378,57 @@ void generate_function_call(char* params, char* ret_type) {
     if(strlen(params_buf) == 0) {
         strcpy(params_buf, "V");
     }
-    sprintf(output_buf, "\tinvokestatic compiler_hw3/foo(%s)%s\n", params_buf, return_type);
+    sprintf(output_buf, "\tinvokestatic compiler_hw3/%s(%s)%s\n", name, params_buf, return_type);
+    write_to_file(output_buf);
+}
+
+void load_single_var(char* val, int arg_type, int scope, int reg, char* type) {
+    char output_buf[256] = {0};
+    if(arg_type == 1) {
+        // Variable
+        if(reg < 0) {
+            // Global variable
+        }
+        else {
+            // Local variable
+            if(strcmp(type, "int") == 0) {
+            // int
+            sprintf(output_buf, "\tiload %d\n", reg);
+            }
+            else {
+                // float
+                sprintf(output_buf, "\tfload %d\n", reg);
+            }
+        }
+    }
+    else if(arg_type == 2) {
+        sprintf(output_buf, "\tldc %s\n", val);
+    }
+
+    write_to_file(output_buf);
+}
+
+void generate_while_branch(char* operator) {
+    char output_buf[256] = {0};
+    
+    if(strcmp(operator, ">") == 0) {
+        sprintf(output_buf, "\tifgt LABEL_TRUE\n\tgoto LABEL_FALSE\nLABEL_TRUE:\n");
+    }
+    else if(strcmp(operator, "<") == 0) {
+        sprintf(output_buf, "\tiflt LABEL_TRUE\n\tgoto LABEL_FALSE\nLABEL_TRUE:\n");
+    }
+    else if(strcmp(operator, ">=") == 0) {
+        sprintf(output_buf, "\tifge LABEL_TRUE\n\tgoto LABEL_FALSE\nLABEL_TRUE:\n");
+    }
+    else if(strcmp(operator, "<=") == 0) {
+        sprintf(output_buf, "\tifle LABEL_TRUE\n\tgoto LABEL_FALSE\nLABEL_TRUE:\n");
+    }
+    else if(strcmp(operator, "==") == 0) {
+        sprintf(output_buf, "\tifeq LABEL_TRUE\n\tgoto LABEL_FALSE\nLABEL_TRUE:\n");
+    }
+    else if(strcmp(operator, "!=") == 0) {
+        sprintf(output_buf, "\tifne LABEL_TRUE\n\tgoto LABEL_FALSE\nLABEL_TRUE:\n");
+    }
+    
     write_to_file(output_buf);
 }
