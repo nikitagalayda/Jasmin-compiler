@@ -66,6 +66,9 @@ int find_highest_reg(int);
 // 3rd parameter is requested data - 1: reg 2: type
 int find_var_data(char*, int, int);
 int find_var(char*, int, int*, int*, char*);
+
+// Get parameter types of given function
+void get_func_params(char*, char*, char*, int);
 %}
 
 /* Use variable or self-defined structure to represent
@@ -202,7 +205,7 @@ declaration
         // Function call
 
         insert_symbol($1, $2, "function_decl", curr_scope);
-        erase_table_scope(curr_scope+1); 
+        erase_table_scope(curr_scope+1);
     }
 ;
 
@@ -510,12 +513,34 @@ postfix_expression
             strcpy(strstr(error_msg, "variable"), "function ");
             strcat(error_msg, error_cause_name);
         }
+        char param_buf[128] = {0};
+        char return_type[16] = {0};
+
+        get_func_params($1, param_buf, return_type, curr_scope);
+        // int ret_type = find_var_data($1, curr_scope, 2);
+
+        printf("FUNCTION %s PARAMS ARE: %s\n", $1, param_buf);
+        // (parameter_type, return_type)
+        generate_function_call(param_buf, return_type);
     }
 	| postfix_expression LB argument_expression_list RB {
         if(semantic_error) {
             strcpy(strstr(error_msg, "variable"), "function ");
             strcat(error_msg, error_cause_name);
         }
+
+        // Pass parameter list
+        // Pass return type
+        char param_buf[128] = {0};
+        char return_type[16] = {0};
+
+        get_func_params($1, param_buf, return_type, curr_scope);
+        // int ret_type = find_var_data($1, curr_scope, 2);
+
+        // printf("FUNCTION %s PARAMS ARE: %s\n", $1, param_buf);
+        // (parameter_type, return_type)
+        generate_function_call(param_buf, return_type);
+
     }
 	| postfix_expression INC
 	| postfix_expression DEC
@@ -569,7 +594,9 @@ assignment_operator
 ;
 
 selection_statement
-    : IF LB expression RB compound_stat ELSE compound_stat
+    : IF LB expression RB compound_stat ELSE compound_stat {
+        // should go to stat not compound_stat
+    }
     | IF LB expression RB compound_stat
 ;
 
@@ -610,8 +637,7 @@ int main(int argc, char** argv)
     return 0;
 }
 
-void yyerror(char *s)
-{
+void yyerror(char *s) {
     // if semantic error is present, we want to display it before the syntax
     // error stops execution
     if(semantic_error) {
@@ -752,9 +778,13 @@ int find_var_data(char* name, int scope, int data) {
                     // Int
                     return 1;
                 }
-                else {
+                else if(strcmp(it->data_type, "float") == 0) {
                     // Float
                     return 2;
+                }
+                else {
+                    // Void (only for functions)
+                    return 3;
                 }
             }
         }
@@ -774,6 +804,9 @@ int find_var(char* name, int scope, int* req_reg, int* req_scope, char* req_type
                 *req_scope = it->scope_level;
                 *req_reg = it->reg_id;
                 strcpy(req_type, it->data_type);
+                if(strcmp(it->entry_type, "function") == 0) {
+                    return 4;
+                }
                 // Is a variable
                 return 1;
             }
@@ -805,6 +838,22 @@ int find_var(char* name, int scope, int* req_reg, int* req_scope, char* req_type
         strcpy(req_type, "int");
     }
     return 2;
+}
+
+void get_func_params(char* name, char* param_buf, char* return_type, int scope) {
+    for(int i = scope; i >= 0; i--) {
+        TRAVERSE_SCOPE_AFTER_HEAD(i) {
+            // printf("checking scope: %d\n", scope);
+            if(strcmp(name, it->name) == 0) {
+                // printf("curr it: %s\n", it->name);
+                // printf("FOUND PARAMS: %s", it->formal_param);   
+                strcpy(param_buf, it->formal_param);
+                strcpy(return_type, it->data_type);
+                return;
+            }
+        }
+    }
+    return;
 }
 
 void dump_symbol(bool last_print) {

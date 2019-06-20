@@ -104,6 +104,7 @@ void process_var_assgn_single(char* right_val, char* left_type, char* right_type
 }
 
 void type_map(char* type, char* dest) {
+    // changed from strcat --> strcpy
     if(strcmp(type, "int") == 0) {
         strcat(dest, "I");
     }
@@ -121,6 +122,18 @@ void type_map(char* type, char* dest) {
     }
     else {
         strcat(dest, "I");
+    }
+}
+
+void int_type_map(int type, char* dest) {
+    if(type == 1) {
+        strcat(dest, "I");
+    }
+    else if(type == 2) {
+        strcat(dest, "F");
+    }
+    else if(type == 3) {
+        strcat(dest, "V");
     }
 }
 
@@ -335,5 +348,28 @@ void generate_print_function(char* val, char* type, int reg, int scope) {
         }
     }
     write_to_file(load_buf);
+    write_to_file(output_buf);
+}
+
+void generate_function_call(char* params, char* ret_type) {
+    char params_buf[64] = {0};
+    char output_buf[256] = {0};
+    char return_type[8] = {0};
+    printf("RT: %s\n\n", ret_type);
+    // int_type_map(ret_type, return_type);
+    type_map(ret_type, return_type);
+
+    char* token = strtok(params, ",");
+    while( token != NULL ) {
+        char mapped_type[8] = {0};
+        type_map(token, mapped_type);
+        strcat(params_buf, mapped_type);
+        token = strtok(NULL, ",");
+    }
+    printf("FINAL TYPES: %s\n", params_buf);
+    if(strlen(params_buf) == 0) {
+        strcpy(params_buf, "V");
+    }
+    sprintf(output_buf, "\tinvokestatic compiler_hw3/foo(%s)%s\n", params_buf, return_type);
     write_to_file(output_buf);
 }

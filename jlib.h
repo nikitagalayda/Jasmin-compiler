@@ -9,3 +9,4 @@ void generate_cast_code(char* left_type, char* right_type);
 void process_var_assgn_single(char* right_val, char* left_type, char* right_type, char* right_arg_type, int left_reg, int right_reg);
 void generate_func_definition_end(char*);
 void generate_print_function(char*, char*, int, int);
+void generate_function_call(char*, char*);
