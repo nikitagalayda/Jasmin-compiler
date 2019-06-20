@@ -20,13 +20,6 @@ y.tab.c: ${FNAME}.y
 test:
 	rm -f *.j
 	@./${PARSER} < ./example_input/basic_declaration.c
-	# @echo -e "\n\033[1;33mmain.class output\033[0m"
-	# @java -jar jasmin.jar ${FNAME}.j
-	# @java ${FNAME} 
-
-test_build:
-	rm -f *.j
-	@./${PARSER} < ./example_input/basic_declaration.c
 	@echo -e "\n\033[1;33mmain.class output\033[0m"
 	@java -jar jasmin.jar ${FNAME}.j
 	@java ${FNAME} 
@@ -38,6 +31,27 @@ test_func:
 test_while:
 	rm -f *.j
 	@./${PARSER} < ./example_input/basic_while_statement.c
+
+test_build_decl:
+	rm -f *.j
+	@./${PARSER} < ./example_input/basic_declaration.c
+	@echo -e "\n\033[1;33mmain.class output\033[0m"
+	@java -jar jasmin.jar ${FNAME}.j
+	@java ${FNAME} 
+
+test_build_func:
+	rm -f *.j
+	@./${PARSER} < ./example_input/basic_function.c
+	@echo -e "\n\033[1;33mmain.class output\033[0m"
+	@java -jar jasmin.jar ${FNAME}.j
+	@java ${FNAME} 
+
+test_build_while:
+	rm -f *.j
+	@./${PARSER} < ./example_input/basic_while_statement.c
+	@echo -e "\n\033[1;33mmain.class output\033[0m"
+	@java -jar jasmin.jar ${FNAME}.j
+	@java ${FNAME} 
 
 clean:
 	rm -f *.o ${PARSER} ${OBJECT} 

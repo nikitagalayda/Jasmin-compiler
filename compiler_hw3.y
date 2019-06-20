@@ -252,7 +252,7 @@ compound_stat
     }
     | LCB {++curr_scope;} block_item_list RCB { 
         // write_to_file("LABEL TRUE:\n");
-        /*dump_symbol(false);*/ 
+        dump_symbol(false);
         --curr_scope; 
     } 
 ;
@@ -715,7 +715,7 @@ selection_statement
 ;
 
 iteration_statement
-    : WHILE { write_to_file("LABEL BEGIN:\n"); } LB expression RB compound_stat {
+    : WHILE { write_to_file("LABEL_BEGIN:\n"); } LB expression RB compound_stat {
         write_to_file("\tgoto LABEL_BEGIN\n");
         write_to_file("LABEL_FALSE:\n\tgoto EXIT_0\nEXIT_0:\n");
     } 

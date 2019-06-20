@@ -69,7 +69,7 @@ id			{letter}+({letter}|{digit})*
 ")"		{ CONCAT return RB; }
 "{"		{ CONCAT return LCB; }
 "}"		{ CONCAT
-            // printf("%d: %s", line_number++, buf); 
+            printf("%d: %s", line_number++, buf); 
             is_rcb = 1; 
             memset(buf, '\0', BUF_SIZE); 
             return RCB; 
@@ -112,7 +112,7 @@ id			{letter}+({letter}|{digit})*
  /* C type Comment */
 "/*"				{ CONCAT BEGIN COMMENT; }
 <COMMENT>[^*\n]+	{ CONCAT }
-<COMMENT>\n			{CONCAT}//{ CONCAT printf("%d: %s", line_number, buf); ++line_number, memset(buf, '\0', BUF_SIZE); }
+<COMMENT>\n			{ CONCAT printf("%d: %s", line_number, buf); ++line_number, memset(buf, '\0', BUF_SIZE); }
 <COMMENT>"*"		{ CONCAT }
 <COMMENT>"*/"		{ CONCAT BEGIN INITIAL; }
 
@@ -128,21 +128,21 @@ id			{letter}+({letter}|{digit})*
 [\n]        { CONCAT
     if(is_rcb) {
         is_rcb = 0;
-        // printf("%s", buf);
+        printf("%s", buf);
     }
     else {
         if(buf[0] == '\n') {
-            // printf("%d:\n", line_number++);
+            printf("%d:\n", line_number++);
         }
         else {
-            // printf("%d: %s", line_number++, buf);
+            printf("%d: %s", line_number++, buf);
         }
     }
     if(semantic_error) {
-        // printf("\n|-----------------------------------------------|\n");
-        // printf("| Error found in line %d: %s", yylineno, buf);
-        // printf("| %s", error_msg);
-        // printf("\n|-----------------------------------------------|\n\n");
+        printf("\n|-----------------------------------------------|\n");
+        printf("| Error found in line %d: %s", yylineno, buf);
+        printf("| %s", error_msg);
+        printf("\n|-----------------------------------------------|\n\n");
         semantic_error = false;
         memset(error_msg, 0, sizeof(error_msg));
     }
