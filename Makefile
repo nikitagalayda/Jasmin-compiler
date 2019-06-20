@@ -20,6 +20,13 @@ y.tab.c: ${FNAME}.y
 test:
 	rm -f *.j
 	@./${PARSER} < ./example_input/basic_declaration.c
+	# @echo -e "\n\033[1;33mmain.class output\033[0m"
+	# @java -jar jasmin.jar ${FNAME}.j
+	# @java ${FNAME} 
+
+test_build:
+	rm -f *.j
+	@./${PARSER} < ./example_input/basic_declaration.c
 	@echo -e "\n\033[1;33mmain.class output\033[0m"
 	@java -jar jasmin.jar ${FNAME}.j
 	@java ${FNAME} 

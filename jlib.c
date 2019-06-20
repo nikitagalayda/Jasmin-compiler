@@ -303,23 +303,35 @@ void generate_print_function(char* val, char* type, int reg, int scope) {
             // strcpy(type_buf, "F");
             strcpy(output_buf, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n\tswap\n\tinvokevirtual java/io/PrintStream/println(F)V\n");
     }
-    else {
+    else if(strcmp(type, "int") == 0) {
         //int 
         sprintf(load_buf, "\tiload %d\n", reg);
         // strcpy(type_buf, "I");
         strcpy(output_buf, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n\tswap\n\tinvokevirtual java/io/PrintStream/println(I)V\n");
     }
+    else {
+        // string 
+        strcpy(output_buf, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n\tswap\n\tinvokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+    }
 
     if(reg < 0) {
         // Constant or global variable
         if(scope == 0) {
+            // Global variable
+
             char type_mapped[8] = {0};
             type_map(type, type_mapped);
 
             sprintf(load_buf, "\tgetstatic compiler_hw3/%s %s\n", val, type_mapped);
         }
         else {
-            sprintf(load_buf, "\tldc %s\n", val);
+            // Constant or string
+            if(strcmp(type, "str") == 0) {
+                sprintf(load_buf, "\tldc \"%s\"\n", val);
+            }
+            else {
+                sprintf(load_buf, "\tldc %s\n", val);
+            }
         }
     }
     write_to_file(load_buf);

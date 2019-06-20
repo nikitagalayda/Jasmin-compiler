@@ -120,6 +120,8 @@ int find_var(char*, int, int*, int*, char*);
 %type <string> arithmetic_operator_high
 %type <string> arithmetic_operator_low
 
+// Print
+%type <string> str_const_expression
 
 // Assigment expressions (a = b + c)
 %type <string> assignment_operator
@@ -252,7 +254,10 @@ expression_stat
 ;
 
 print_func
-    : PRINT LB QUOTA STR_CONST QUOTA RB SEMICOLON
+    : PRINT LB constant RB SEMICOLON {
+        printf("PRINT STRING: %s\n", $3);
+        generate_print_function($3, "str", -1, -1);
+    }
     | PRINT LB postfix_expression RB SEMICOLON {
         // char* type[8] = {0};
         int req_reg, req_scope;
@@ -288,8 +293,9 @@ constant
         sprintf(conv_type, "%d", $1);
         strcpy($$, conv_type);
     }
-    | QUOTA STR_CONST QUOTA {
+    | QUOTA str_const_expression QUOTA {
         char conv_type[32] = {0};
+        // printf("STRING: %s\n", $2);
         sprintf(conv_type, "%s", $2);
         strcpy($$, conv_type);
     }
@@ -302,6 +308,13 @@ constant
         char conv_type[32] = {0};
         sprintf(conv_type, "%s", "false");
         strcpy($$, conv_type);
+    }
+;
+
+str_const_expression
+    : STR_CONST {
+        printf("STRING: %s\n", yytext);
+        strcpy($$, yytext);
     }
 ;
 
